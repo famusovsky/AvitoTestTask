@@ -126,11 +126,6 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 	}
 	defer tx.Rollback()
 
-	_, err = db.Exec(`INSERT INTO users (id) SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = $1);`, id)
-	if err != nil {
-		return errors.New("error while adding user to the database: " + err.Error())
-	}
-
 	errText := ""
 
 	for _, slug := range append {
@@ -190,11 +185,6 @@ func checkupUserInDB(db *sql.DB, id int) ([]string, error) {
 // Возвращает: ошибку.
 func checkDB(db *sql.DB) error {
 	var (
-		qUsers = `SELECT COUNT(*) = 1 AS properUsers
-		FROM information_schema.columns
-		WHERE table_schema = 'public'
-		AND table_name = 'users'
-		AND column_name = 'id' AND data_type = 'integer';`
 		qSegments = `SELECT COUNT(*) = 2 AS properSegments
 		FROM information_schema.columns
 		WHERE table_schema = 'public'
@@ -211,17 +201,12 @@ func checkDB(db *sql.DB) error {
 			(column_name = 'user_id' AND data_type = 'integer')
 			OR (column_name = 'segment_id' AND data_type = 'integer')
 		);`
-		properUsers     bool
 		properSegments  bool
 		properRelations bool
 	)
 
 	var err error = nil
 
-	err = db.QueryRow(qUsers).Scan(&properUsers)
-	if err != nil {
-		return errors.Join(errors.New("error while checking 'users' table"), err)
-	}
 	err = db.QueryRow(qSegments).Scan(&properSegments)
 	if err != nil {
 		return errors.Join(errors.New("error while checking 'segments' table"), err)
@@ -231,10 +216,6 @@ func checkDB(db *sql.DB) error {
 		return errors.Join(errors.New("error while checking 'user_segment_relations' table"), err)
 	}
 
-	if !properUsers {
-		err = errors.Join(err, errors.New(
-			"'users' table is not ok: proper 'users' table is { id INTEGER }"))
-	}
 	if !properSegments {
 		err = errors.Join(err, errors.New(
 			"'segments' table is not ok: proper 'segments' table is { id INTEGER; slug TEXT }"))
