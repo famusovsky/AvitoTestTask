@@ -42,7 +42,7 @@ func Test_checkDB(t *testing.T) {
 			mock.ExpectQuery(queries[0]).WillReturnRows(sqlmock.NewRows([]string{"properSegments"}).AddRow("true"))
 			mock.ExpectQuery(queries[1]).WillReturnRows(sqlmock.NewRows([]string{"properRelations"}).AddRow("true"))
 
-			err = finaliseErrors(checkDB(db), nil, mock, t)
+			err = checkResponce(checkDB(db), nil, mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -55,7 +55,7 @@ func Test_checkDB(t *testing.T) {
 			mock.ExpectQuery(queries[0]).WillReturnRows(sqlmock.NewRows([]string{"properSegments"}).AddRow("false"))
 			mock.ExpectQuery(queries[1]).WillReturnRows(sqlmock.NewRows([]string{"properRelations"}).AddRow("true"))
 
-			err = finaliseErrors(checkDB(db), segmentErr, mock, t)
+			err = checkResponce(checkDB(db), segmentErr, mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -65,7 +65,7 @@ func Test_checkDB(t *testing.T) {
 			mock.ExpectQuery(queries[0]).WillReturnRows(sqlmock.NewRows([]string{"properSegments"}).AddRow("true"))
 			mock.ExpectQuery(queries[1]).WillReturnRows(sqlmock.NewRows([]string{"properRelations"}).AddRow("false"))
 
-			err = finaliseErrors(checkDB(db), relationsErr, mock, t)
+			err = checkResponce(checkDB(db), relationsErr, mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -75,7 +75,7 @@ func Test_checkDB(t *testing.T) {
 			mock.ExpectQuery(queries[0]).WillReturnRows(sqlmock.NewRows([]string{"properSegments"}).AddRow("false"))
 			mock.ExpectQuery(queries[1]).WillReturnRows(sqlmock.NewRows([]string{"properRelations"}).AddRow("false"))
 
-			err = finaliseErrors(checkDB(db), errors.Join(segmentErr, relationsErr), mock, t)
+			err = checkResponce(checkDB(db), errors.Join(segmentErr, relationsErr), mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -109,7 +109,7 @@ func Test_addSegmentToDB(t *testing.T) {
 			mock.ExpectCommit()
 
 			id, err := addSegmentToDB(db, testSlug)
-			err = finaliseErrors(err, nil, mock, t)
+			err = checkResponce(err, nil, mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -125,7 +125,7 @@ func Test_addSegmentToDB(t *testing.T) {
 			mock.ExpectRollback()
 
 			_, err := addSegmentToDB(db, testSlug)
-			err = finaliseErrors(err, fmt.Errorf("error while adding segment to the database: %s", testErrText), mock, t)
+			err = checkResponce(err, fmt.Errorf("error while adding segment to the database: %s", testErrText), mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -135,7 +135,7 @@ func Test_addSegmentToDB(t *testing.T) {
 			mock.ExpectBegin().WillReturnError(errors.New(testErrText))
 
 			_, err := addSegmentToDB(db, testSlug)
-			err = finaliseErrors(err, fmt.Errorf("%s%s", startTransactionErrText, testErrText), mock, t)
+			err = checkResponce(err, fmt.Errorf("%s%s", startTransactionErrText, testErrText), mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -147,7 +147,7 @@ func Test_addSegmentToDB(t *testing.T) {
 			mock.ExpectCommit().WillReturnError(errors.New(testErrText))
 
 			_, err := addSegmentToDB(db, testSlug)
-			err = finaliseErrors(err, fmt.Errorf("error while committing transaction: %s", testErrText), mock, t)
+			err = checkResponce(err, fmt.Errorf("error while committing transaction: %s", testErrText), mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -175,7 +175,7 @@ func Test_deleteSegmentFromDB(t *testing.T) {
 			mock.ExpectExec(query).WithArgs(testSlug).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectCommit()
 
-			err = finaliseErrors(deleteSegmentFromDB(db, testSlug), nil, mock, t)
+			err = checkResponce(deleteSegmentFromDB(db, testSlug), nil, mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -186,7 +186,7 @@ func Test_deleteSegmentFromDB(t *testing.T) {
 			mock.ExpectExec(query).WillReturnError(errors.New(testErrText))
 			mock.ExpectRollback()
 
-			err = finaliseErrors(deleteSegmentFromDB(db, testSlug),
+			err = checkResponce(deleteSegmentFromDB(db, testSlug),
 				fmt.Errorf("error while deleting segment with slug = %s from the database: %s", testSlug, testErrText), mock, t)
 			if err != nil {
 				t.Error(err)
@@ -196,7 +196,7 @@ func Test_deleteSegmentFromDB(t *testing.T) {
 		t.Run("error while starting transaction", func(t *testing.T) {
 			mock.ExpectBegin().WillReturnError(errors.New(testErrText))
 
-			err = finaliseErrors(deleteSegmentFromDB(db, testSlug),
+			err = checkResponce(deleteSegmentFromDB(db, testSlug),
 				fmt.Errorf("%s%s", startTransactionErrText, testErrText), mock, t)
 			if err != nil {
 				t.Error(err)
@@ -208,7 +208,7 @@ func Test_deleteSegmentFromDB(t *testing.T) {
 			mock.ExpectExec(query).WithArgs(testSlug).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectCommit().WillReturnError(errors.New(testErrText))
 
-			err = finaliseErrors(deleteSegmentFromDB(db, testSlug),
+			err = checkResponce(deleteSegmentFromDB(db, testSlug),
 				fmt.Errorf("%s%s", commitTransactionErrText, testErrText), mock, t)
 			if err != nil {
 				t.Error(err)
@@ -255,7 +255,7 @@ func Test_modifyUserInDB(t *testing.T) {
 			}
 			mock.ExpectCommit()
 
-			err = finaliseErrors(modifyUserInDB(db, testId, testAppend, testRemove), nil, mock, t)
+			err = checkResponce(modifyUserInDB(db, testId, testAppend, testRemove), nil, mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -283,7 +283,7 @@ func Test_modifyUserInDB(t *testing.T) {
 			}
 			mock.ExpectCommit()
 
-			err = finaliseErrors(modifyUserInDB(db, testId, testAppend, testRemove), errors.New(expectedErrStr), mock, t)
+			err = checkResponce(modifyUserInDB(db, testId, testAppend, testRemove), errors.New(expectedErrStr), mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -292,7 +292,7 @@ func Test_modifyUserInDB(t *testing.T) {
 		t.Run("error while starting transaction", func(t *testing.T) {
 			mock.ExpectBegin().WillReturnError(errors.New(testErrText))
 
-			err = finaliseErrors(modifyUserInDB(db, testId, testAppend, testRemove), fmt.Errorf("%s%s", startTransactionErrText, testErrText), mock, t)
+			err = checkResponce(modifyUserInDB(db, testId, testAppend, testRemove), fmt.Errorf("%s%s", startTransactionErrText, testErrText), mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -310,7 +310,7 @@ func Test_modifyUserInDB(t *testing.T) {
 			}
 			mock.ExpectCommit().WillReturnError(errors.New(testErrText))
 
-			err = finaliseErrors(modifyUserInDB(db, testId, testAppend, testRemove), fmt.Errorf("%s%s", commitTransactionErrText, testErrText), mock, t)
+			err = checkResponce(modifyUserInDB(db, testId, testAppend, testRemove), fmt.Errorf("%s%s", commitTransactionErrText, testErrText), mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -318,7 +318,7 @@ func Test_modifyUserInDB(t *testing.T) {
 	}
 }
 
-func Test_checkupUserInDB(t *testing.T) {
+func Test_GetUserRelationsInDB(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	if err != nil {
 		t.Fatal("error creating mock database")
@@ -344,8 +344,8 @@ func Test_checkupUserInDB(t *testing.T) {
 			}
 			mock.ExpectQuery(query).WithArgs(testId).WillReturnRows(rows)
 
-			segments, err := checkupUserInDB(db, testId)
-			err = finaliseErrors(err, nil, mock, t)
+			segments, err := GetUserRelationsInDB(db, testId)
+			err = checkResponce(err, nil, mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -358,8 +358,8 @@ func Test_checkupUserInDB(t *testing.T) {
 		t.Run("error while getting user's segments from the database", func(t *testing.T) {
 			mock.ExpectQuery(query).WithArgs(testId).WillReturnError(testErr)
 
-			_, err := checkupUserInDB(db, testId)
-			err = finaliseErrors(err, fmt.Errorf("error while getting user %d's segments from the database: %s", testId, testErr), mock, t)
+			_, err := GetUserRelationsInDB(db, testId)
+			err = checkResponce(err, fmt.Errorf("error while getting user %d's segments from the database: %s", testId, testErr), mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -367,16 +367,16 @@ func Test_checkupUserInDB(t *testing.T) {
 	}
 }
 
-func finaliseErrors(got error, expected error, mock sqlmock.Sqlmock, t *testing.T) error {
+func checkResponce(got error, expected error, mock sqlmock.Sqlmock, t *testing.T) error {
 	if expected != nil && (got == nil || got.Error() != expected.Error()) {
 		return fmt.Errorf("got err = %s\nexpected err = %s\n", got, expected)
 	}
 	if expected == nil && got != nil {
-		return fmt.Errorf("unexpected error: %s", got)
+		return fmt.Errorf("unexpected error: %s\n", got)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
-		return fmt.Errorf("unmet expectation error: %s", err)
+		return fmt.Errorf("unmet expectation error: %s\n", err)
 	}
 	return nil
 }

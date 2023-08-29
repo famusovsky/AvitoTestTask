@@ -1,32 +1,47 @@
+// usersegmentation - пакет, реализующий сегментацию пользователей.
 package usersegmentation
 
 import (
-	"database/sql"
+	"log"
 
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
+
 	"github.com/gofiber/fiber/v2"
 )
 
+// App - структура, описывающая приложение.
 type App struct {
-	webApp      *fiber.App
-	dbProcessor models.UserSegmentationDbProcessor
+	webApp      *fiber.App                         // webApp - веб-приложение на основе фреймворка Fiber.
+	dbProcessor models.UserSegmentationDbProcessor // dbProcessor - обработчик БД.
+	errorLog    *log.Logger                        // errorLog - логгер ошибок.
 }
 
-func CreateApp(db *sql.DB, getProcessor func(*sql.DB) (models.UserSegmentationDbProcessor, error)) (App, error) {
-	// TODO
+// CreateApp - создание приложения.
+//
+// Принимает: логгер, обработчик БД.
+//
+// Возвращает: приложение.
+func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcessor) *App {
+	// TODO implement
 	application := fiber.New()
-	dbProcessor, err := getProcessor(db)
-	if err != nil {
-		return App{}, err
-	}
+	// application.Use(middleware.Recover)
 
-	return App{
+	result := &App{
 		webApp:      application,
 		dbProcessor: dbProcessor,
-	}, nil
+		errorLog:    logger,
+	}
+
+	result.webApp.Post("/segments", result.PostSegment)
+	result.webApp.Delete("/segments", result.DeleteSegment)
+	result.webApp.Patch("/users", result.ModifyUser)
+	result.webApp.Get("/users", result.GetUserRelations)
+
+	return result
 }
 
-func (app App) Run() {
-	// TODO
+// Run - запуск приложения.
+func (app *App) Run() {
+	// TODO implement
 	return
 }

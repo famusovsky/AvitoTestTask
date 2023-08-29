@@ -1,3 +1,4 @@
+// postgres - пакет, реализующий модель базы данных сегментирования пользователей для PostgreSQL.
 package postgres
 
 import (
@@ -10,7 +11,7 @@ import (
 
 // UserSegmentation - модель базы данных сегментирования пользователей.
 type UserSegmentation struct {
-	db *sql.DB
+	db *sql.DB // db - указатель на базу данных.
 }
 
 // GetModel - создание модели базы данных сегментирования пользователей.
@@ -54,13 +55,13 @@ func (model *UserSegmentation) ModifyUser(id int, append []string, remove []stri
 	return modifyUserInDB(model.db, id, append, remove)
 }
 
-// CheckupUser - получение данных о пользователе по id.
+// GetUserRelations - получение данных о пользователе по id.
 //
 // Принимает: id пользователя.
 //
 // Возвращает: список сегментов, в которых состоит пользователь и ошибку.
-func (model *UserSegmentation) CheckupUser(id int) ([]string, error) {
-	return checkupUserInDB(model.db, id)
+func (model *UserSegmentation) GetUserRelations(id int) ([]string, error) {
+	return GetUserRelationsInDB(model.db, id)
 }
 
 // addSegmentToDB - добавление нового сегмента в базу данных.
@@ -155,12 +156,12 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 	return nil
 }
 
-// checkupUserInDB - получение данных о пользователе из базы данных по id.
+// GetUserRelationsInDB - получение данных о пользователе из базы данных по id.
 //
 // Принимает: указатель на базу данных и id пользователя.
 //
 // Возвращает: список сегментов, в которых состоит пользователь и ошибку.
-func checkupUserInDB(db *sql.DB, id int) ([]string, error) {
+func GetUserRelationsInDB(db *sql.DB, id int) ([]string, error) {
 	q := `SELECT slug FROM segments WHERE id IN (SELECT segment_id FROM user_segment_relations WHERE user_id = $1);`
 	rows, err := db.Query(q, id)
 	if err != nil {
