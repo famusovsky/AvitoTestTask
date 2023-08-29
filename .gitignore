@@ -17,7 +17,7 @@
 !README.md
 !LICENSE
 
-# !Makefile
+!/docs/*
 
 # ...even if they are in subdirectories
 !*/

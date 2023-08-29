@@ -1,0 +1,245 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a User Segmentation API server, made for Avito Backend Trainee Assignment 2023.",
+        "title": "User Segmentation API",
+        "contact": {}
+    },
+    "paths": {
+        "/segments": {
+            "post": {
+                "description": "Add segment with the specified slug to DB and get it's ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Segments"
+                ],
+                "summary": "Adds segment to DB.",
+                "parameters": [
+                    {
+                        "description": "Segment slug",
+                        "name": "slug",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Segment"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ID"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete segment with the specified slug from DB.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Segments"
+                ],
+                "summary": "Deletes segment from DB.",
+                "parameters": [
+                    {
+                        "description": "Segment slug",
+                        "name": "slug",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Segment"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "description": "Get a list of segments in which the user with the specified ID is located.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Returns segments in which the user is located.",
+                "parameters": [
+                    {
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Segment"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Append and remove user with the specified ID to/from segments.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Modifies user's relations with segments.",
+                "parameters": [
+                    {
+                        "description": "User modification parameters",
+                        "name": "params",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UserModification"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.Err": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Text - текст ошибки.",
+                    "type": "string"
+                }
+            }
+        },
+        "models.ID": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Value - id.",
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Segment": {
+            "type": "object",
+            "properties": {
+                "slug": {
+                    "description": "Slug - название сегмента.",
+                    "type": "string"
+                }
+            }
+        },
+        "models.UserModification": {
+            "type": "object",
+            "properties": {
+                "append": {
+                    "description": "Append - список сегментов, в которые необходимо добавить пользователя.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "description": "Value - id.",
+                    "type": "integer"
+                },
+                "remove": {
+                    "description": "Remove - список сегментов, из которых необходимо убрать пользователя.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

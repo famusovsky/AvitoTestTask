@@ -1,0 +1,163 @@
+definitions:
+  models.Err:
+    properties:
+      error:
+        description: Text - текст ошибки.
+        type: string
+    type: object
+  models.ID:
+    properties:
+      id:
+        description: Value - id.
+        type: integer
+    type: object
+  models.Segment:
+    properties:
+      slug:
+        description: Slug - название сегмента.
+        type: string
+    type: object
+  models.UserModification:
+    properties:
+      append:
+        description: Append - список сегментов, в которые необходимо добавить пользователя.
+        items:
+          type: string
+        type: array
+      id:
+        description: Value - id.
+        type: integer
+      remove:
+        description: Remove - список сегментов, из которых необходимо убрать пользователя.
+        items:
+          type: string
+        type: array
+    type: object
+info:
+  contact: {}
+  description: This is a User Segmentation API server, made for Avito Backend Trainee
+    Assignment 2023.
+  title: User Segmentation API
+paths:
+  /segments:
+    delete:
+      consumes:
+      - application/json
+      description: Delete segment with the specified slug from DB.
+      parameters:
+      - description: Segment slug
+        in: body
+        name: slug
+        required: true
+        schema:
+          $ref: '#/definitions/models.Segment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Err'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Err'
+      summary: Deletes segment from DB.
+      tags:
+      - Segments
+    post:
+      consumes:
+      - application/json
+      description: Add segment with the specified slug to DB and get it's ID.
+      parameters:
+      - description: Segment slug
+        in: body
+        name: slug
+        required: true
+        schema:
+          $ref: '#/definitions/models.Segment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ID'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Err'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Err'
+      summary: Adds segment to DB.
+      tags:
+      - Segments
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of segments in which the user with the specified ID
+        is located.
+      parameters:
+      - description: User ID
+        in: body
+        name: id
+        required: true
+        schema:
+          $ref: '#/definitions/models.ID'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Segment'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Err'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Err'
+      summary: Returns segments in which the user is located.
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      description: Append and remove user with the specified ID to/from segments.
+      parameters:
+      - description: User modification parameters
+        in: body
+        name: params
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserModification'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Err'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Err'
+      summary: Modifies user's relations with segments.
+      tags:
+      - Users
+swagger: "2.0"

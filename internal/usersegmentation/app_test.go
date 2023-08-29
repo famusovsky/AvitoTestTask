@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gofiber/fiber"
 )
 
 // processorMock - mock для обработчика БД.
@@ -60,87 +62,70 @@ func Test_Segments(t *testing.T) {
 
 		t.Run("normal case", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"slug":"test"}`, "POST", "/segments", "application/json")
+			req := createRequest(`{"slug":"test"}`, fiber.MethodPost, "/segments", fiber.MIMEApplicationJSON)
 			id := rand.Int()
 			processor.resOnAddSegment = id
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, []byte(fmt.Sprintf(`{"id":%d}`, id)), http.StatusOK, "application/json", t)
+			checkResponse(resp, err, []byte(fmt.Sprintf(`{"id":%d}`, id)), http.StatusOK, fiber.MIMEApplicationJSON, t)
 
-			req.Method = "DELETE"
+			req.Method = fiber.MethodDelete
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, []byte("OK"), http.StatusOK, "application/json", t)
+			checkResponse(resp, err, []byte(`"OK"`), http.StatusOK, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("error while handling db", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"slug":"test"}`, "POST", "/segments", "application/json")
+			req := createRequest(`{"slug":"test"}`, fiber.MethodPost, "/segments", fiber.MIMEApplicationJSON)
 			processor.errOnAddSegment = testErr
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, "application/json", t)
+			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, fiber.MIMEApplicationJSON, t)
 
-			req.Method = "DELETE"
+			req.Method = fiber.MethodDelete
 			processor.errOnDeleteSegment = testErr
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, "application/json", t)
+			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("bad request - wrong content type", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"slug":"test"}`, "POST", "/segments", "xml")
+			req := createRequest(`{"slug":"test"}`, fiber.MethodPost, "/segments", "xml")
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
-			req.Method = "DELETE"
+			req.Method = fiber.MethodDelete
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("bad request - non marshable body", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"smth":"is wrong"}`, "POST", "/segments", "application/json")
+			req := createRequest(`{"smth":"is wrong"}`, fiber.MethodPost, "/segments", fiber.MIMEApplicationJSON)
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
-			req.Method = "DELETE"
+			req.Method = fiber.MethodDelete
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 		})
-
-		// TODO
-		// t.Run("bad request - empty slug", func(t *testing.T) {
-		// 	defer processor.CleanUp()
-		// 	body := strings.NewReader(`{"slug":""}`)
-		// 	req := httptest.NewRequest("POST", "/segments", body)
-		// 	req.Header.Set("Content-Type", "application/json")
-
-		// 	resp, err := app.webApp.Test(req)
-
-		// 	checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, "application/json", t)
-
-		// 	req.Method = "DELETE"
-
-		// 	resp, err = app.webApp.Test(req)
-		// 	checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, "application/json", t)
-		// })
 
 		t.Run("bad request - empty input", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(``, "POST", "/segments", "application/json")
+			req := createRequest(``, fiber.MethodPost, "/segments", fiber.MIMEApplicationJSON)
 
 			resp, err := app.webApp.Test(req)
 
-			checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, wrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 		})
 	}
 }
@@ -160,73 +145,73 @@ func Test_Users(t *testing.T) {
 		t.Run("normal case", func(t *testing.T) {
 			defer processor.CleanUp()
 			req := createRequest(`{"id":10,"append":["test1","test2"],"remove":["test3","test4"]}`,
-				"PATCH", "/users", "application/json")
+				fiber.MethodPatch, "/users", fiber.MIMEApplicationJSON)
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, []byte("OK"), http.StatusOK, "application/json", t)
+			checkResponse(resp, err, []byte(`"OK"`), http.StatusOK, fiber.MIMEApplicationJSON, t)
 
-			req = createRequest(`{"id":0}`, "GET", "/users", "application/json")
+			req = createRequest(`{"id":0}`, fiber.MethodGet, "/users", fiber.MIMEApplicationJSON)
 			processor.resOnGetUserRelations = []string{"test1", "test2"}
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, []byte(`[{"slug":"test1"},{"slug":"test2"}]`), http.StatusOK, "application/json", t)
+			checkResponse(resp, err, []byte(`[{"slug":"test1"},{"slug":"test2"}]`), http.StatusOK, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("error while handling db", func(t *testing.T) {
 			defer processor.CleanUp()
 			req := createRequest(`{"id":10,"append":["test1","test2"],"remove":["test3","test4"]}`,
-				"PATCH", "/users", "application/json")
+				fiber.MethodPatch, "/users", fiber.MIMEApplicationJSON)
 			processor.errOnModifyUser = testErr
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, "application/json", t)
+			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, fiber.MIMEApplicationJSON, t)
 
-			req = createRequest(`{"id":0}`, "GET", "/users", "application/json")
+			req = createRequest(`{"id":0}`, fiber.MethodGet, "/users", fiber.MIMEApplicationJSON)
 			processor.errOnGetUserRelations = testErr
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, "application/json", t)
+			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("bad request - wrong content type", func(t *testing.T) {
 			defer processor.CleanUp()
 			req := createRequest(`{"id":10,"append":["test1","test2"],"remove":["test3","test4"]}`,
-				"PATCH", "/users", "xml")
+				fiber.MethodPatch, "/users", "xml")
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
-			req.Method = "GET"
+			req.Method = fiber.MethodGet
 			processor.resOnGetUserRelations = []string{"test1", "test2"}
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("bad request - non marshable body", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"smth":"is wrong"}`, "PATCH", "/users", "application/json")
+			req := createRequest(`{"smth":"is wrong"}`, fiber.MethodPatch, "/users", fiber.MIMEApplicationJSON)
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, userModWrongReqErrText, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, userModWrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
-			req.Method = "GET"
+			req.Method = fiber.MethodGet
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, getUserWrongReqErrText, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, getUserWrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("bad request - empty input", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(``, "PATCH", "/users", "application/json")
+			req := createRequest(``, fiber.MethodPatch, "/users", fiber.MIMEApplicationJSON)
 
 			resp, err := app.webApp.Test(req)
-			checkResponse(resp, err, userModWrongReqErrText, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, userModWrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
-			req.Method = "GET"
+			req.Method = fiber.MethodGet
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, getUserWrongReqErrText, http.StatusBadRequest, "application/json", t)
+			checkResponse(resp, err, getUserWrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 		})
 	}
 }

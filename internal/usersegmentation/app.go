@@ -3,10 +3,13 @@ package usersegmentation
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 
 	"github.com/gofiber/fiber/v2"
+	fiberLog "github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/swagger"
 )
 
 // App - структура, описывающая приложение.
@@ -22,14 +25,17 @@ type App struct {
 //
 // Возвращает: приложение.
 func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcessor) *App {
-	// TODO implement
-	application := fiber.New()
-	// application.Use(middleware.Recover)
+	application := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			fiberLog.Errorf("Error: %v", err)
+			return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
+		},
+	})
 
 	result := &App{
 		webApp:      application,
 		dbProcessor: dbProcessor,
-		errorLog:    logger,
+		errorLog:    logger, // XXX not used now
 	}
 
 	result.webApp.Post("/segments", result.PostSegment)
@@ -41,7 +47,11 @@ func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcesso
 }
 
 // Run - запуск приложения.
-func (app *App) Run() {
-	// TODO implement
-	return
+//
+// Принимает: адрес.
+func (app *App) Run(addr string) {
+	app.webApp.Get("/swagger/*", swagger.New()) // default
+	// app.webApp.Use(middleware.Recover)
+
+	app.errorLog.Fatalln(app.webApp.Listen(addr))
 }

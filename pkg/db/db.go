@@ -9,19 +9,19 @@ import (
 
 // OpenViaEnvVars - открытие БД через переменные окружения.
 // Возвращает БД и ошибку.
-func OpenViaEnvVars() (*sql.DB, error) {
-	return OpenViaDsn(getDsnFromEnv())
+func OpenViaEnvVars(driver string) (*sql.DB, error) {
+	return OpenViaDsn(getDsnFromEnv(), driver)
 }
 
 // OpenViaDsn - открытие БД через строку DSN.
 // Принимает строку DSN.
 // Возвращает БД и ошибку.
-func OpenViaDsn(dsn string) (*sql.DB, error) {
+func OpenViaDsn(dsn string, driver string) (*sql.DB, error) {
 	if dsn == "" {
 		dsn = getDsnFromEnv()
 	}
 
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open(driver, dsn)
 	if err != nil {
 		return nil, err
 	}

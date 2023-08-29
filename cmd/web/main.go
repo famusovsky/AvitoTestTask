@@ -1,8 +1,11 @@
 package main
 
 import (
+	"flag"
 	"log"
+	"os"
 
+	_ "github.com/famusovsky/AvitoTestTask/docs"
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation"
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/postgres"
 	"github.com/famusovsky/AvitoTestTask/pkg/db"
@@ -10,20 +13,28 @@ import (
 )
 
 // XXX DO NOT FORGET ABOUT COMMENTS
+// TODO normal logging
 
+// @title User Segmentation API
+// @description This is a User Segmentation API server, made for Avito Backend Trainee Assignment 2023.
 func main() {
+	addr := flag.String("addr", ":8080", "HTTP address")
+	flag.Parse()
+
+	// TODO change logger
+	errorLog := log.New(os.Stdout, "ERR\t", log.Ldate|log.Ltime)
+
 	db, err := db.OpenViaEnvVars()
 	if err != nil {
-		panic(err)
+		errorLog.Fatal(err)
 	}
 
 	dbProcessor, err := postgres.GetModel(db)
 	if err != nil {
-		panic(err)
+		errorLog.Fatal(err)
 	}
 
-	// TODO change logger
-	app := usersegmentation.CreateApp(log.Default(), dbProcessor)
+	app := usersegmentation.CreateApp(errorLog, dbProcessor)
 
-	app.Run()
+	app.Run(*addr)
 }

@@ -12,6 +12,17 @@ import (
 // Принимает: контекст.
 //
 // Возвращает: ошибку.
+
+// @Summary      Adds segment to DB.
+// @Description  Add segment with the specified slug to DB and get it's ID.
+// @Tags         Segments
+// @Accept       json
+// @Produce      json
+// @Param        slug body models.Segment true "Segment slug"
+// @Success      200 {object} models.ID
+// @Failure      400 {object} models.Err
+// @Failure      500 {object} models.Err
+// @Router       /segments [post]
 func (app *App) PostSegment(c *fiber.Ctx) error {
 	if ok, err := checkType(c); !ok {
 		return err
@@ -34,6 +45,17 @@ func (app *App) PostSegment(c *fiber.Ctx) error {
 // Принимает: контекст.
 //
 // Возвращает: ошибку.
+
+// @Summary      Deletes segment from DB.
+// @Description  Delete segment with the specified slug from DB.
+// @Tags         Segments
+// @Accept       json
+// @Produce      json
+// @Param        slug body models.Segment true "Segment slug"
+// @Success      200 {string} string "OK"
+// @Failure      400 {object} models.Err
+// @Failure      500 {object} models.Err
+// @Router       /segments [delete]
 func (app *App) DeleteSegment(c *fiber.Ctx) error {
 	if ok, err := checkType(c); !ok {
 		return err
@@ -48,7 +70,7 @@ func (app *App) DeleteSegment(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
 	}
 
-	return c.Type("json").SendStatus(http.StatusOK)
+	return c.Status(http.StatusOK).JSON("OK")
 }
 
 // ModifyUser - изменяет сегменты пользователя.
@@ -56,6 +78,17 @@ func (app *App) DeleteSegment(c *fiber.Ctx) error {
 // Принимает: контекст.
 //
 // Возвращает: ошибку.
+
+// @Summary      Modifies user's relations with segments.
+// @Description  Append and remove user with the specified ID to/from segments.
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Param        params body models.UserModification true "User modification parameters"
+// @Success      200 {string} string "OK"
+// @Failure      400 {object} models.Err
+// @Failure      500 {object} models.Err
+// @Router       /users [patch]
 func (app *App) ModifyUser(c *fiber.Ctx) error {
 	if ok, err := checkType(c); !ok {
 		return err
@@ -70,7 +103,7 @@ func (app *App) ModifyUser(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
 	}
 
-	return c.Type("json").SendStatus(http.StatusOK)
+	return c.Status(http.StatusOK).JSON("OK")
 }
 
 // GetUserRelations - возвращает сегменты, в которых состоит пользователь.
@@ -78,6 +111,17 @@ func (app *App) ModifyUser(c *fiber.Ctx) error {
 // Принимает: контекст.
 //
 // Возвращает: ошибку.
+
+// @Summary      Returns segments in which the user is located.
+// @Description  Get a list of segments in which the user with the specified ID is located.
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Param        id body models.ID true "User ID"
+// @Success      200 {object} []models.Segment
+// @Failure      400 {object} models.Err
+// @Failure      500 {object} models.Err
+// @Router       /users [get]
 func (app *App) GetUserRelations(c *fiber.Ctx) error {
 	if ok, err := checkType(c); !ok {
 		return err
