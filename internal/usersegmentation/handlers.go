@@ -2,6 +2,7 @@ package usersegmentation
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 	"github.com/gofiber/fiber/v2"
@@ -115,20 +116,17 @@ func (app *App) ModifyUser(c *fiber.Ctx) error {
 // @Summary      Returns segments in which the user is located.
 // @Description  Get a list of segments in which the user with the specified ID is located.
 // @Tags         Users
-// @Accept       json
 // @Produce      json
-// @Param        id body models.ID true "User ID"
+// @Param        id path int true "User ID"
 // @Success      200 {object} []models.Segment
 // @Failure      400 {object} models.Err
 // @Failure      500 {object} models.Err
-// @Router       /users [get]
+// @Router       /users/{id} [get]
 func (app *App) GetUserRelations(c *fiber.Ctx) error {
-	if ok, err := checkType(c); !ok {
-		return err
-	}
-	id, ok, err := getID(c)
-	if !ok {
-		return err
+	idStr := c.Params("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(models.Err{Text: `path parameter "id" must be an integer`})
 	}
 
 	slugs, err := app.dbProcessor.GetUserRelations(id)

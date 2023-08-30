@@ -43,7 +43,7 @@ func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcesso
 	result.webApp.Post("/segments", result.PostSegment)
 	result.webApp.Delete("/segments", result.DeleteSegment)
 	result.webApp.Patch("/users", result.ModifyUser)
-	result.webApp.Get("/users", result.GetUserRelations)
+	result.webApp.Get("/users/:id", result.GetUserRelations)
 
 	return result
 }

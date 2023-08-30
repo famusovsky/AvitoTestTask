@@ -56,13 +56,14 @@ func Test_Segments(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		var (
+			reqBody         = `{"slug":"test"}`
 			testErr         = fmt.Errorf("test error %d", rand.Int())
-			wrongReqErrText = []byte(`{"error":"request must implement the template {\"slug\":\"some text\"}"}`)
+			wrongReqErrText = []byte(`{"error":"request's body must implement the template {\"slug\":\"some text\"}"}`)
 		)
 
 		t.Run("normal case", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"slug":"test"}`, fiber.MethodPost, "/segments", fiber.MIMEApplicationJSON)
+			req := createRequest(reqBody, fiber.MethodPost, "/segments", fiber.MIMEApplicationJSON)
 			id := rand.Int()
 			processor.resOnAddSegment = id
 
@@ -77,7 +78,7 @@ func Test_Segments(t *testing.T) {
 
 		t.Run("error while handling db", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"slug":"test"}`, fiber.MethodPost, "/segments", fiber.MIMEApplicationJSON)
+			req := createRequest(reqBody, fiber.MethodPost, "/segments", fiber.MIMEApplicationJSON)
 			processor.errOnAddSegment = testErr
 
 			resp, err := app.webApp.Test(req)
@@ -92,7 +93,7 @@ func Test_Segments(t *testing.T) {
 
 		t.Run("bad request - wrong content type", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"slug":"test"}`, fiber.MethodPost, "/segments", "xml")
+			req := createRequest(reqBody, fiber.MethodPost, "/segments", "xml")
 
 			resp, err := app.webApp.Test(req)
 			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
@@ -138,35 +139,37 @@ func Test_Users(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		var (
 			testErr                = fmt.Errorf("test error %d", rand.Int())
-			userModWrongReqErrText = []byte(`{"error":"request must implement the template {\"id\":0,\"append\":[\"test1\",\"test2\"],\"remove\":[\"test3\",\"test4\"]}"}`)
-			getUserWrongReqErrText = []byte(`{"error":"request must implement the template {\"id\":0}"}`)
+			userModReqBody         = `{"id":10,"append":["test1","test2"],"remove":["test3","test4"]}`
+			userModRespBody        = []byte(`[{"slug":"test1"},{"slug":"test2"}]`)
+			userModWrongReqErrText = []byte(`{"error":"request's body must implement the template {\"id\":0,\"append\":[\"test1\",\"test2\"],\"remove\":[\"test3\",\"test4\"]}"}`)
+			getUserWrongReqErrText = []byte(`{"error":"path parameter \"id\" must be an integer"}`)
 		)
 
 		t.Run("normal case", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"id":10,"append":["test1","test2"],"remove":["test3","test4"]}`,
+			req := createRequest(userModReqBody,
 				fiber.MethodPatch, "/users", fiber.MIMEApplicationJSON)
 
 			resp, err := app.webApp.Test(req)
 			checkResponse(resp, err, []byte(`"OK"`), http.StatusOK, fiber.MIMEApplicationJSON, t)
 
-			req = createRequest(`{"id":0}`, fiber.MethodGet, "/users", fiber.MIMEApplicationJSON)
+			req = createRequest(``, fiber.MethodGet, "/users/0", fiber.MIMEApplicationJSON)
 			processor.resOnGetUserRelations = []string{"test1", "test2"}
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, []byte(`[{"slug":"test1"},{"slug":"test2"}]`), http.StatusOK, fiber.MIMEApplicationJSON, t)
+			checkResponse(resp, err, userModRespBody, http.StatusOK, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("error while handling db", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"id":10,"append":["test1","test2"],"remove":["test3","test4"]}`,
+			req := createRequest(userModReqBody,
 				fiber.MethodPatch, "/users", fiber.MIMEApplicationJSON)
 			processor.errOnModifyUser = testErr
 
 			resp, err := app.webApp.Test(req)
 			checkResponse(resp, err, []byte(fmt.Sprintf(`{"error":"%s"}`, testErr)), http.StatusInternalServerError, fiber.MIMEApplicationJSON, t)
 
-			req = createRequest(`{"id":0}`, fiber.MethodGet, "/users", fiber.MIMEApplicationJSON)
+			req = createRequest(``, fiber.MethodGet, "/users/0", fiber.MIMEApplicationJSON)
 			processor.errOnGetUserRelations = testErr
 
 			resp, err = app.webApp.Test(req)
@@ -175,17 +178,17 @@ func Test_Users(t *testing.T) {
 
 		t.Run("bad request - wrong content type", func(t *testing.T) {
 			defer processor.CleanUp()
-			req := createRequest(`{"id":10,"append":["test1","test2"],"remove":["test3","test4"]}`,
+			req := createRequest(userModReqBody,
 				fiber.MethodPatch, "/users", "xml")
 
 			resp, err := app.webApp.Test(req)
 			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
-			req.Method = fiber.MethodGet
+			req = createRequest(``, fiber.MethodGet, "/users/0", "xml")
 			processor.resOnGetUserRelations = []string{"test1", "test2"}
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, contentTypeErr, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
+			checkResponse(resp, err, userModRespBody, http.StatusOK, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("bad request - non marshable body", func(t *testing.T) {
@@ -195,7 +198,7 @@ func Test_Users(t *testing.T) {
 			resp, err := app.webApp.Test(req)
 			checkResponse(resp, err, userModWrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
-			req.Method = fiber.MethodGet
+			req = createRequest(``, fiber.MethodGet, "/users/wrong", fiber.MIMEApplicationJSON)
 
 			resp, err = app.webApp.Test(req)
 			checkResponse(resp, err, getUserWrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
@@ -208,10 +211,11 @@ func Test_Users(t *testing.T) {
 			resp, err := app.webApp.Test(req)
 			checkResponse(resp, err, userModWrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
 
-			req.Method = fiber.MethodGet
+			expectedErr := []byte(fmt.Sprintf(`{"error":"%s"}`, fiber.ErrMethodNotAllowed.Message))
+			req = createRequest(``, fiber.MethodGet, "/users", fiber.MIMEApplicationJSON)
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, getUserWrongReqErrText, http.StatusBadRequest, fiber.MIMEApplicationJSON, t)
+			checkResponse(resp, err, expectedErr, http.StatusInternalServerError, fiber.MIMEApplicationJSON, t)
 		})
 	}
 }

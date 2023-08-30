@@ -21,7 +21,7 @@ func getSlug(c *fiber.Ctx) (string, bool, error) {
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(&segment); err != nil {
-		err := c.Status(http.StatusBadRequest).JSON(models.Err{Text: `request must implement the template {"slug":"some text"}`})
+		err := c.Status(http.StatusBadRequest).JSON(models.Err{Text: `request's body must implement the template {"slug":"some text"}`})
 		return "", false, err
 	}
 
@@ -40,30 +40,11 @@ func getUserMod(c *fiber.Ctx) (models.UserModification, bool, error) {
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(&mod); err != nil {
-		err := c.Status(http.StatusBadRequest).JSON(models.Err{Text: `request must implement the template {"id":0,"append":["test1","test2"],"remove":["test3","test4"]}`})
+		err := c.Status(http.StatusBadRequest).JSON(models.Err{Text: `request's body must implement the template {"id":0,"append":["test1","test2"],"remove":["test3","test4"]}`})
 		return mod, false, err
 	}
 
 	return mod, true, nil
-}
-
-// getID - получение id из контекста.
-//
-// Принимает: контекст.
-//
-// Возвращает: id, флаг успешности, ошибку.
-func getID(c *fiber.Ctx) (int, bool, error) {
-	id := models.ID{}
-
-	dec := json.NewDecoder(bytes.NewReader(c.Body()))
-	dec.DisallowUnknownFields()
-
-	if err := dec.Decode(&id); err != nil {
-		err := c.Status(http.StatusBadRequest).JSON(models.Err{Text: `request must implement the template {"id":0}`})
-		return 0, false, err
-	}
-
-	return id.Value, true, nil
 }
 
 // checkType - проверка типа запроса на json.

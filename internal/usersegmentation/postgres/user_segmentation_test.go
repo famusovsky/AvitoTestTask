@@ -83,6 +83,46 @@ func Test_checkDB(t *testing.T) {
 	}
 }
 
+func Test_createDB(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	if err != nil {
+		t.Fatal("error creating mock database")
+	}
+	defer db.Close()
+
+	for i := 0; i < 10; i++ {
+		query :=
+			`CREATE TABLE IF NOT EXISTS user_segment_relations (
+			user_id INTEGER,
+			segment_id INTEGER,
+			CONSTRAINT unique_user_segment UNIQUE (user_id, segment_id)
+		);
+		
+		CREATE TABLE IF NOT EXISTS segments (
+			id SERIAL UNIQUE,
+			slug TEXT PRIMARY KEY
+		);`
+
+		t.Run("normal case", func(t *testing.T) {
+			mock.ExpectExec(query).WillReturnResult(sqlmock.NewResult(0, 1))
+
+			err = checkResponce(createDB(db), nil, mock, t)
+			if err != nil {
+				t.Error(err)
+			}
+		})
+
+		t.Run("error while creating tables", func(t *testing.T) {
+			mock.ExpectExec(query).WillReturnError(errors.New("test error"))
+
+			err = checkResponce(createDB(db), errors.New("error while creating tables: test error"), mock, t)
+			if err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
 const (
 	startTransactionErrText  = "error while starting transaction: "
 	commitTransactionErrText = "error while committing transaction: "
@@ -167,12 +207,14 @@ func Test_deleteSegmentFromDB(t *testing.T) {
 			testId      = rand.Int()
 			testErrText = "test error " + strconv.Itoa(testId)
 			testSlug    = "TEST " + strconv.Itoa(testId)
-			query       = "DELETE FROM segments WHERE slug = $1;"
+			queries     = []string{`DELETE FROM user_segment_relations WHERE segment_id = (SELECT id FROM segments WHERE slug = $1);`,
+				`DELETE FROM segments WHERE slug = $1;`}
 		)
 
 		t.Run("normal case", func(t *testing.T) {
 			mock.ExpectBegin()
-			mock.ExpectExec(query).WithArgs(testSlug).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec(queries[0]).WithArgs(testSlug).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec(queries[1]).WithArgs(testSlug).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectCommit()
 
 			err = checkResponce(deleteSegmentFromDB(db, testSlug), nil, mock, t)
@@ -182,12 +224,22 @@ func Test_deleteSegmentFromDB(t *testing.T) {
 		})
 
 		t.Run("wrong case", func(t *testing.T) {
+			expectedErr := fmt.Errorf("error while deleting segment with slug = %s from the database: %s", testSlug, testErrText)
+
 			mock.ExpectBegin()
-			mock.ExpectExec(query).WillReturnError(errors.New(testErrText))
+			mock.ExpectExec(queries[0]).WillReturnError(errors.New(testErrText))
 			mock.ExpectRollback()
 
-			err = checkResponce(deleteSegmentFromDB(db, testSlug),
-				fmt.Errorf("error while deleting segment with slug = %s from the database: %s", testSlug, testErrText), mock, t)
+			err = checkResponce(deleteSegmentFromDB(db, testSlug), expectedErr, mock, t)
+			if err != nil {
+				t.Error(err)
+			}
+
+			mock.ExpectBegin()
+			mock.ExpectExec(queries[0]).WillReturnError(errors.New(testErrText))
+			mock.ExpectRollback()
+
+			err = checkResponce(deleteSegmentFromDB(db, testSlug), expectedErr, mock, t)
 			if err != nil {
 				t.Error(err)
 			}
@@ -205,7 +257,8 @@ func Test_deleteSegmentFromDB(t *testing.T) {
 
 		t.Run("error while commiting transaction", func(t *testing.T) {
 			mock.ExpectBegin()
-			mock.ExpectExec(query).WithArgs(testSlug).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec(queries[0]).WithArgs(testSlug).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec(queries[1]).WithArgs(testSlug).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectCommit().WillReturnError(errors.New(testErrText))
 
 			err = checkResponce(deleteSegmentFromDB(db, testSlug),

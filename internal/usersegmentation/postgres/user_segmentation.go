@@ -109,11 +109,16 @@ func deleteSegmentFromDB(db *sql.DB, slug string) error {
 	}
 	defer tx.Rollback()
 
-	q := `DELETE FROM segments WHERE slug = $1;`
-	_, err = tx.Exec(q, slug)
-	if err != nil {
-		return fmt.Errorf("error while deleting segment with slug = %s from the database: %s", slug, err.Error())
+	q := `DELETE FROM user_segment_relations WHERE segment_id = (SELECT id FROM segments WHERE slug = $1);`
+	errStr := "error while deleting segment with slug = %s from the database: %s"
+	if _, err = tx.Exec(q, slug); err != nil {
+		return fmt.Errorf(errStr, slug, err.Error())
 	}
+	q = `DELETE FROM segments WHERE slug = $1;`
+	if _, err = tx.Exec(q, slug); err != nil {
+		return fmt.Errorf(errStr, slug, err.Error())
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return errors.New("error while committing transaction: " + err.Error())
@@ -241,6 +246,7 @@ func checkDB(db *sql.DB) error {
 // Принимает: указатель на базу данных.
 //
 // Возвращает: ошибку.
+// TODO test
 func createDB(db *sql.DB) error {
 	q :=
 		`CREATE TABLE IF NOT EXISTS user_segment_relations (
@@ -256,7 +262,7 @@ func createDB(db *sql.DB) error {
 
 	_, err := db.Exec(q)
 	if err != nil {
-		return errors.Join(errors.New("error while creating tables: "), err)
+		return errors.Join(fmt.Errorf("error while creating tables: %s", err))
 	}
 
 	return nil
