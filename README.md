@@ -13,11 +13,28 @@ CREATE TABLE user_segment_relations (
 CREATE TABLE segments (
 	id SERIAL UNIQUE,
 	slug TEXT PRIMARY KEY
-)
+);
 ```
 
 ## Запуск:
-// TODO
+
+Запуск dev-среды с помощью docker-compose:
+
+```bash
+docker-compose up
+```
+
+Запуск с помощью go run:
+
+```bash
+// Среда, в которой происходит запуск, должна иметь переменные окружения:
+// DB_HOST
+// DB_PORT
+// DB_USER
+// DB_PASSWORD
+// DB_NAME
+go run ./cmd/main.go // -create-tables=true - запуск с автоматическим созданием таблиц в БД
+```
 
 ## Комментарии к решению:
 

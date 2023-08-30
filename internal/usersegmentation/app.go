@@ -4,6 +4,8 @@ package usersegmentation
 import (
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 
@@ -16,7 +18,7 @@ import (
 type App struct {
 	webApp      *fiber.App                         // webApp - веб-приложение на основе фреймворка Fiber.
 	dbProcessor models.UserSegmentationDbProcessor // dbProcessor - обработчик БД.
-	errorLog    *log.Logger                        // errorLog - логгер ошибок.
+	logger      *log.Logger                        // errorLog - логгер ошибок.
 }
 
 // CreateApp - создание приложения.
@@ -35,7 +37,7 @@ func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcesso
 	result := &App{
 		webApp:      application,
 		dbProcessor: dbProcessor,
-		errorLog:    logger, // XXX not used now
+		logger:      logger, // XXX not used now
 	}
 
 	result.webApp.Post("/segments", result.PostSegment)
@@ -51,7 +53,19 @@ func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcesso
 // Принимает: адрес.
 func (app *App) Run(addr string) {
 	app.webApp.Get("/swagger/*", swagger.New()) // default
-	// app.webApp.Use(middleware.Recover)
 
-	app.errorLog.Fatalln(app.webApp.Listen(addr))
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+
+		if err := app.webApp.Shutdown(); err != nil {
+			app.logger.Printf("Error while shutting down the server: %v", err)
+		}
+
+		close(idleConnsClosed)
+	}()
+
+	app.logger.Fatalln(app.webApp.Listen(addr))
 }

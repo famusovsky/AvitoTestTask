@@ -1,0 +1,11 @@
+# Files
+.dockerignore
+.gitignore
+Dockerfile
+**/*.md
+**/*_test.go
+
+# Folders
+.git/
+.github/
+build/

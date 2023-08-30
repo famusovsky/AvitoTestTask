@@ -9,6 +9,7 @@
 
 # But not these files...
 !/.gitignore
+!/.dockerignore
 
 !*.go
 !go.sum
@@ -16,8 +17,10 @@
 
 !README.md
 !LICENSE
-
 !/docs/*
+
+!Dockerfile
+!docker-compose.yml
 
 # ...even if they are in subdirectories
 !*/

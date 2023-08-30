@@ -16,10 +16,17 @@ type UserSegmentation struct {
 
 // GetModel - создание модели базы данных сегментирования пользователей.
 //
-// Принимает базу данных.
+// Принимает базу данных и флаг создания таблиц (если true, то таблицы будут созданы в базе данных).
 //
 // Возвращает модель базы данных сегментирования пользователей и ошибку.
-func GetModel(db *sql.DB) (models.UserSegmentationDbProcessor, error) {
+func GetModel(db *sql.DB, createTables bool) (models.UserSegmentationDbProcessor, error) {
+	if createTables {
+		err := createDB(db)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	err := checkDB(db)
 	if err != nil {
 		return nil, err
@@ -227,4 +234,30 @@ func checkDB(db *sql.DB) error {
 	}
 
 	return err
+}
+
+// createDB - создание таблиц сегментов и отношений пользователь-сегмент в базе данных.
+//
+// Принимает: указатель на базу данных.
+//
+// Возвращает: ошибку.
+func createDB(db *sql.DB) error {
+	q :=
+		`CREATE TABLE IF NOT EXISTS user_segment_relations (
+		user_id INTEGER,
+		segment_id INTEGER,
+		CONSTRAINT unique_user_segment UNIQUE (user_id, segment_id)
+	);
+	
+	CREATE TABLE IF NOT EXISTS segments (
+		id SERIAL UNIQUE,
+		slug TEXT PRIMARY KEY
+	);`
+
+	_, err := db.Exec(q)
+	if err != nil {
+		return errors.Join(errors.New("error while creating tables: "), err)
+	}
+
+	return nil
 }
