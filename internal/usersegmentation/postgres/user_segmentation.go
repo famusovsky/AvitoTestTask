@@ -68,7 +68,7 @@ func (model *UserSegmentation) ModifyUser(id int, append []string, remove []stri
 //
 // Возвращает: список сегментов, в которых состоит пользователь и ошибку.
 func (model *UserSegmentation) GetUserRelations(id int) ([]string, error) {
-	return GetUserRelationsInDB(model.db, id)
+	return getUserRelationsInDB(model.db, id)
 }
 
 // addSegmentToDB - добавление нового сегмента в базу данных.
@@ -142,7 +142,7 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 	errText := ""
 
 	for _, slug := range append {
-		_, err = db.Exec(`INSERT INTO user_segment_relations (user_id, segment_id) SELECT $1, id FROM segments WHERE slug = $2;`, id, slug)
+		_, err = tx.Exec(`INSERT INTO user_segment_relations (user_id, segment_id) SELECT $1, id FROM segments WHERE slug = $2;`, id, slug)
 		if err != nil {
 			errText += fmt.Sprintf(`error while adding user %d to the segment "%s": %s`, id, slug, err.Error())
 			errText += fmt.Sprintln()
@@ -150,7 +150,7 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 	}
 
 	for _, slug := range remove {
-		_, err = db.Exec(`DELETE FROM user_segment_relations WHERE user_id = $1 AND segment_id = (SELECT id FROM segments WHERE slug = $2);`, id, slug)
+		_, err = tx.Exec(`DELETE FROM user_segment_relations WHERE user_id = $1 AND segment_id = (SELECT id FROM segments WHERE slug = $2);`, id, slug)
 		if err != nil {
 			errText += fmt.Sprintf(`error while removing user %d from the segment "%s": %s`, id, slug, err.Error())
 			errText += fmt.Sprintln()
@@ -173,7 +173,7 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 // Принимает: указатель на базу данных и id пользователя.
 //
 // Возвращает: список сегментов, в которых состоит пользователь и ошибку.
-func GetUserRelationsInDB(db *sql.DB, id int) ([]string, error) {
+func getUserRelationsInDB(db *sql.DB, id int) ([]string, error) {
 	q := `SELECT slug FROM segments WHERE id IN (SELECT segment_id FROM user_segment_relations WHERE user_id = $1);`
 	rows, err := db.Query(q, id)
 	if err != nil {

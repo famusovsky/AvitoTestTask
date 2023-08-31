@@ -397,7 +397,7 @@ func Test_GetUserRelationsInDB(t *testing.T) {
 			}
 			mock.ExpectQuery(query).WithArgs(testId).WillReturnRows(rows)
 
-			segments, err := GetUserRelationsInDB(db, testId)
+			segments, err := getUserRelationsInDB(db, testId)
 			err = checkResponce(err, nil, mock, t)
 			if err != nil {
 				t.Error(err)
@@ -411,7 +411,7 @@ func Test_GetUserRelationsInDB(t *testing.T) {
 		t.Run("error while getting user's segments from the database", func(t *testing.T) {
 			mock.ExpectQuery(query).WithArgs(testId).WillReturnError(testErr)
 
-			_, err := GetUserRelationsInDB(db, testId)
+			_, err := getUserRelationsInDB(db, testId)
 			err = checkResponce(err, fmt.Errorf("error while getting user %d's segments from the database: %s", testId, testErr), mock, t)
 			if err != nil {
 				t.Error(err)
