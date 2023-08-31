@@ -71,7 +71,7 @@ func (app *App) DeleteSegment(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
 	}
 
-	return c.Status(http.StatusOK).JSON("OK")
+	return c.JSON("OK")
 }
 
 // ModifyUser - изменяет сегменты пользователя.
@@ -104,7 +104,7 @@ func (app *App) ModifyUser(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
 	}
 
-	return c.Status(http.StatusOK).JSON("OK")
+	return c.JSON("OK")
 }
 
 // GetUserRelations - возвращает сегменты, в которых состоит пользователь.
@@ -138,5 +138,5 @@ func (app *App) GetUserRelations(c *fiber.Ctx) error {
 		segments[i].Slug = slug
 	}
 
-	return c.Type("json").JSON(segments)
+	return c.JSON(segments)
 }
