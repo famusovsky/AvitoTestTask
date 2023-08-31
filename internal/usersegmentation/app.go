@@ -10,7 +10,6 @@ import (
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 
 	"github.com/gofiber/fiber/v2"
-	fiberLog "github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/swagger"
 )
 
@@ -29,7 +28,7 @@ type App struct {
 func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcessor) *App {
 	application := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			fiberLog.Errorf("Error: %v", err)
+			logger.Printf("Error: %v", err)
 			return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
 		},
 	})
@@ -37,7 +36,7 @@ func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcesso
 	result := &App{
 		webApp:      application,
 		dbProcessor: dbProcessor,
-		logger:      logger, // XXX not used now
+		logger:      logger,
 	}
 
 	result.webApp.Post("/segments", result.PostSegment)
