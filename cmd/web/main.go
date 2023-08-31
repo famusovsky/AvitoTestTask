@@ -22,7 +22,6 @@ func main() {
 	createTables := flag.Bool("create_tables", false, "Create tables in database")
 	flag.Parse()
 
-	// TODO change logger
 	logger := log.New(os.Stdout, "LOG\t", log.Ldate|log.Ltime)
 
 	db, err := db.OpenViaEnvVars("postgres")
