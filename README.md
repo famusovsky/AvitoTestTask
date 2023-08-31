@@ -29,6 +29,7 @@ go run ./cmd/main.go // -create-tables=true - запуск с автоматич
 CREATE TABLE user_segment_relations (
     user_id INTEGER,
     segment_id INTEGER,
+    expires TIMESTAMP,
     CONSTRAINT unique_user_segment UNIQUE (user_id, segment_id)
 );
 
