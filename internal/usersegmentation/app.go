@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 
@@ -37,7 +38,7 @@ func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcesso
 	result := &App{
 		webApp:      application,
 		dbProcessor: dbProcessor,
-		logger:      logger, // XXX not used now
+		logger:      logger,
 	}
 
 	result.webApp.Post("/segments", result.PostSegment)
@@ -65,6 +66,16 @@ func (app *App) Run(addr string) {
 		}
 
 		close(idleConnsClosed)
+	}()
+
+	go func() {
+		for {
+			if err := app.dbProcessor.TidyRelations(); err != nil {
+				app.logger.Printf("Error while tidying relations: %v", err)
+			}
+
+			time.Sleep(30 * time.Second)
+		}
 	}()
 
 	app.logger.Fatalln(app.webApp.Listen(addr))

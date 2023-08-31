@@ -17,12 +17,21 @@ definitions:
         description: Slug - название сегмента.
         type: string
     type: object
+  models.SegmentRelation:
+    properties:
+      expires:
+        description: Expires - время, до которого пользователь находится в сегменте.
+        type: string
+      slug:
+        description: Slug - название сегмента.
+        type: string
+    type: object
   models.UserModification:
     properties:
       append:
         description: Append - список сегментов, в которые необходимо добавить пользователя.
         items:
-          type: string
+          $ref: '#/definitions/models.SegmentRelation'
         type: array
       id:
         description: Value - id.
@@ -30,7 +39,7 @@ definitions:
       remove:
         description: Remove - список сегментов, из которых необходимо убрать пользователя.
         items:
-          type: string
+          $ref: '#/definitions/models.Segment'
         type: array
     type: object
 info:

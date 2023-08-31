@@ -58,8 +58,15 @@ func (model *UserSegmentation) DeleteSegment(slug string) error {
 // Принимает: id пользователя, имена сегментов, в которые необходимо добавить пользователя, и имена сегментов, из которых необходимо убрать пользователя.
 //
 // Возвращает: ошибку.
-func (model *UserSegmentation) ModifyUser(id int, append []string, remove []string) error {
+func (model *UserSegmentation) ModifyUser(id int, append []models.SegmentRelation, remove []models.Segment) error {
 	return modifyUserInDB(model.db, id, append, remove)
+}
+
+// TidyRelations - удаление просроченных нахождений пользователей в сегментах.
+//
+// Возвращает: ошибку.
+func (model *UserSegmentation) TidyRelations() error {
+	return tidyRelations(model.db)
 }
 
 // GetUserRelations - получение данных о пользователе по id.
@@ -68,7 +75,7 @@ func (model *UserSegmentation) ModifyUser(id int, append []string, remove []stri
 //
 // Возвращает: список сегментов, в которых состоит пользователь и ошибку.
 func (model *UserSegmentation) GetUserRelations(id int) ([]string, error) {
-	return GetUserRelationsInDB(model.db, id)
+	return getUserRelationsInDB(model.db, id)
 }
 
 // addSegmentToDB - добавление нового сегмента в базу данных.
@@ -132,7 +139,7 @@ func deleteSegmentFromDB(db *sql.DB, slug string) error {
 // Принимает: указатель на базу данных, id пользователя, имена сегментов, в которые необходимо добавить пользователя, и имена сегментов, из которых необходимо убрать пользователя.
 //
 // Возвращает: ошибку.
-func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error {
+func modifyUserInDB(db *sql.DB, id int, append []models.SegmentRelation, remove []models.Segment) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return errors.New("error while starting transaction: " + err.Error())
@@ -141,18 +148,23 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 
 	errText := ""
 
-	for _, slug := range append {
-		_, err = db.Exec(`INSERT INTO user_segment_relations (user_id, segment_id) SELECT $1, id FROM segments WHERE slug = $2;`, id, slug)
+	for _, relation := range append {
+		// XXX
+		_, err = db.Exec(
+			`INSERT INTO user_segment_relations (user_id, segment_id, expires) SELECT $1, id, $3 FROM segments WHERE slug = $2;`,
+			id, relation.Slug, relation.Expires)
 		if err != nil {
-			errText += fmt.Sprintf(`error while adding user %d to the segment "%s": %s`, id, slug, err.Error())
+			errText += fmt.Sprintf(`error while adding user %d to the segment "%s": %s`, id, relation.Slug, err.Error())
 			errText += fmt.Sprintln()
 		}
 	}
 
-	for _, slug := range remove {
-		_, err = db.Exec(`DELETE FROM user_segment_relations WHERE user_id = $1 AND segment_id = (SELECT id FROM segments WHERE slug = $2);`, id, slug)
+	for _, segment := range remove {
+		_, err = db.Exec(
+			`DELETE FROM user_segment_relations WHERE user_id = $1 AND segment_id = (SELECT id FROM segments WHERE slug = $2);`,
+			id, segment.Slug)
 		if err != nil {
-			errText += fmt.Sprintf(`error while removing user %d from the segment "%s": %s`, id, slug, err.Error())
+			errText += fmt.Sprintf(`error while removing user %d from the segment "%s": %s`, id, segment.Slug, err.Error())
 			errText += fmt.Sprintln()
 		}
 	}
@@ -168,12 +180,12 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 	return nil
 }
 
-// GetUserRelationsInDB - получение данных о пользователе из базы данных по id.
+// getUserRelationsInDB - получение данных о пользователе из базы данных по id.
 //
 // Принимает: указатель на базу данных и id пользователя.
 //
 // Возвращает: список сегментов, в которых состоит пользователь и ошибку.
-func GetUserRelationsInDB(db *sql.DB, id int) ([]string, error) {
+func getUserRelationsInDB(db *sql.DB, id int) ([]string, error) {
 	q := `SELECT slug FROM segments WHERE id IN (SELECT segment_id FROM user_segment_relations WHERE user_id = $1);`
 	rows, err := db.Query(q, id)
 	if err != nil {
@@ -194,7 +206,35 @@ func GetUserRelationsInDB(db *sql.DB, id int) ([]string, error) {
 	return segments, nil
 }
 
+// tidyRelations - удаление просроченных нахождений пользователей в сегментах.
+//
+// Принимает: указатель на базу данных.
+//
+// Возвращает: ошибку.
+func tidyRelations(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return errors.New("error while starting transaction: " + err.Error())
+	}
+	defer tx.Rollback()
+
+	_, err = db.Exec(`DELETE FROM user_segment_relations WHERE expires < CURRENT_TIMESTAMP;`)
+	if err != nil {
+		return fmt.Errorf("error while deleting expired relations from the database: %s", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return errors.New("error while committing transaction: " + err.Error())
+	}
+
+	return nil
+}
+
 // checkDB - проверка базы данных на соответствие требуемой б.д. сегментирования пользователей.
+//
+// Принимает: указатель на базу данных.
+//
 // Возвращает: ошибку.
 func checkDB(db *sql.DB) error {
 	var (
@@ -246,12 +286,12 @@ func checkDB(db *sql.DB) error {
 // Принимает: указатель на базу данных.
 //
 // Возвращает: ошибку.
-// TODO test
 func createDB(db *sql.DB) error {
 	q :=
 		`CREATE TABLE IF NOT EXISTS user_segment_relations (
 		user_id INTEGER,
 		segment_id INTEGER,
+		expires TIMESTAMP,
 		CONSTRAINT unique_user_segment UNIQUE (user_id, segment_id)
 	);
 	

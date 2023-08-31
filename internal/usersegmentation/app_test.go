@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 	"github.com/gofiber/fiber"
 )
 
@@ -30,7 +31,7 @@ func (p processorMock) AddSegment(slug string) (int, error) {
 func (p processorMock) DeleteSegment(slug string) error {
 	return p.errOnDeleteSegment
 }
-func (p processorMock) ModifyUser(id int, append []string, remove []string) error {
+func (p processorMock) ModifyUser(id int, append []models.SegmentRelation, remove []models.Segment) error {
 	return p.errOnModifyUser
 }
 func (p processorMock) GetUserRelations(id int) ([]string, error) {
@@ -43,6 +44,9 @@ func (p *processorMock) CleanUp() {
 	p.errOnModifyUser = nil
 	p.resOnGetUserRelations = []string{}
 	p.errOnGetUserRelations = nil
+}
+func (p processorMock) TidyRelations() error {
+	return nil
 }
 
 var (
@@ -137,11 +141,12 @@ func Test_Users(t *testing.T) {
 	app := CreateApp(log.Default(), processor)
 
 	for i := 0; i < 10; i++ {
+		// XXX
 		var (
 			testErr                = fmt.Errorf("test error %d", rand.Int())
-			userModReqBody         = `{"id":10,"append":["test1","test2"],"remove":["test3","test4"]}`
-			userModRespBody        = []byte(`[{"slug":"test1"},{"slug":"test2"}]`)
-			userModWrongReqErrText = []byte(`{"error":"request's body must implement the template {\"id\":0,\"append\":[\"test1\",\"test2\"],\"remove\":[\"test3\",\"test4\"]}"}`)
+			userModReqBody         = `{"id":1,"append":[{"slug":"test1","expires":"2023-08-31T15:15:39.104033+03:00"},{"slug":"test2","expires":"0001-01-01T00:00:00Z"}],"remove":[{"slug":"test3"},{"slug":"test4"}]}`
+			userGetRespBody        = []byte(`[{"slug":"test1"},{"slug":"test2"}]`)
+			userModWrongReqErrText = []byte(`{"error":"request's body must implement the template {\"id\":1,\"append\":[{\"slug\":\"test1\",\"expires\":\"2023-08-31T15:15:39.104033+03:00\"},{\"slug\":\"test2\",\"expires\":\"0001-01-01T00:00:00Z\"}],\"remove\":[{\"slug\":\"test3\"},{\"slug\":\"test4\"}]}"}`)
 			getUserWrongReqErrText = []byte(`{"error":"path parameter \"id\" must be an integer"}`)
 		)
 
@@ -157,7 +162,15 @@ func Test_Users(t *testing.T) {
 			processor.resOnGetUserRelations = []string{"test1", "test2"}
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, userModRespBody, http.StatusOK, fiber.MIMEApplicationJSON, t)
+			checkResponse(resp, err, userGetRespBody, http.StatusOK, fiber.MIMEApplicationJSON, t)
+		})
+
+		t.Run("normal case - empty expiration date", func(t *testing.T) {
+			defer processor.CleanUp()
+			req := createRequest(`{"id":1,"append":[{"slug":"test1"}]}`, fiber.MethodPatch, "/users", fiber.MIMEApplicationJSON)
+
+			resp, err := app.webApp.Test(req)
+			checkResponse(resp, err, []byte(`"OK"`), http.StatusOK, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("error while handling db", func(t *testing.T) {
@@ -188,7 +201,7 @@ func Test_Users(t *testing.T) {
 			processor.resOnGetUserRelations = []string{"test1", "test2"}
 
 			resp, err = app.webApp.Test(req)
-			checkResponse(resp, err, userModRespBody, http.StatusOK, fiber.MIMEApplicationJSON, t)
+			checkResponse(resp, err, userGetRespBody, http.StatusOK, fiber.MIMEApplicationJSON, t)
 		})
 
 		t.Run("bad request - non marshable body", func(t *testing.T) {

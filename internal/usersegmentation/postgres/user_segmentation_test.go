@@ -7,8 +7,10 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 )
 
 func Test_checkDB(t *testing.T) {
@@ -95,6 +97,7 @@ func Test_createDB(t *testing.T) {
 			`CREATE TABLE IF NOT EXISTS user_segment_relations (
 			user_id INTEGER,
 			segment_id INTEGER,
+			expires TIMESTAMP,
 			CONSTRAINT unique_user_segment UNIQUE (user_id, segment_id)
 		);
 		
@@ -270,6 +273,67 @@ func Test_deleteSegmentFromDB(t *testing.T) {
 	}
 }
 
+func Test_tidyRelations(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	if err != nil {
+		t.Fatal("error creating mock database")
+	}
+	defer db.Close()
+
+	for i := 0; i < 10; i++ {
+		var (
+			testErrText = "test error " + strconv.Itoa(rand.Int())
+			query       = `DELETE FROM user_segment_relations WHERE expires < CURRENT_TIMESTAMP;`
+		)
+
+		t.Run("normal case", func(t *testing.T) {
+			mock.ExpectBegin()
+			mock.ExpectExec(query).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectCommit()
+
+			err = checkResponce(tidyRelations(db), nil, mock, t)
+			if err != nil {
+				t.Error(err)
+			}
+		})
+
+		t.Run("wrong case", func(t *testing.T) {
+			expectedErr := fmt.Errorf("error while deleting expired relations from the database: %s", testErrText)
+
+			mock.ExpectBegin()
+			mock.ExpectExec(query).WillReturnError(errors.New(testErrText))
+			mock.ExpectRollback()
+
+			err = checkResponce(tidyRelations(db), expectedErr, mock, t)
+			if err != nil {
+				t.Error(err)
+			}
+		})
+
+		t.Run("error while starting transaction", func(t *testing.T) {
+			mock.ExpectBegin().WillReturnError(errors.New(testErrText))
+
+			err = checkResponce(tidyRelations(db),
+				fmt.Errorf("%s%s", startTransactionErrText, testErrText), mock, t)
+			if err != nil {
+				t.Error(err)
+			}
+		})
+
+		t.Run("error while commiting transaction", func(t *testing.T) {
+			mock.ExpectBegin()
+			mock.ExpectExec(query).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectCommit().WillReturnError(errors.New(testErrText))
+
+			err = checkResponce(tidyRelations(db),
+				fmt.Errorf("%s%s", commitTransactionErrText, testErrText), mock, t)
+			if err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
 func Test_modifyUserInDB(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	if err != nil {
@@ -281,30 +345,33 @@ func Test_modifyUserInDB(t *testing.T) {
 		var (
 			testId      = rand.Int()
 			testErrText = "test error " + strconv.Itoa(testId)
-			testAppend  = make([]string, rand.Intn(15))
-			testRemove  = make([]string, rand.Intn(15))
+			testAppend  = make([]models.SegmentRelation, rand.Intn(15))
+			testRemove  = make([]models.Segment, rand.Intn(15))
 			queries     = []string{
-				`INSERT INTO user_segment_relations (user_id, segment_id) SELECT $1, id FROM segments WHERE slug = $2;`,
+				`INSERT INTO user_segment_relations (user_id, segment_id, expires) SELECT $1, id, $3 FROM segments WHERE slug = $2;`,
 				`DELETE FROM user_segment_relations WHERE user_id = $1 AND segment_id = (SELECT id FROM segments WHERE slug = $2);`,
 			}
 		)
 
 		for j := 0; j < len(testAppend); j++ {
-			testAppend[j] = "TEST " + strconv.Itoa(rand.Int())
+			testAppend[j] = models.SegmentRelation{
+				Segment: models.Segment{Slug: "TEST " + strconv.Itoa(rand.Int())},
+				Expires: time.Now().Add(time.Duration(rand.Int63n(1000000000)) * time.Second),
+			}
 		}
 		for j := 0; j < len(testRemove); j++ {
-			testRemove[j] = "TEST " + strconv.Itoa(rand.Int())
+			testRemove[j] = models.Segment{Slug: "TEST " + strconv.Itoa(rand.Int())}
 		}
 
 		t.Run("normal case - segment and user could already exist or not", func(t *testing.T) {
 			mock.ExpectBegin()
-			for _, segment := range testAppend {
+			for _, relation := range testAppend {
 				mock.ExpectExec(
-					queries[0]).WithArgs(testId, segment).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
+					queries[0]).WithArgs(testId, relation.Slug, relation.Expires).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
 			}
 			for _, segment := range testRemove {
 				mock.ExpectExec(
-					queries[1]).WithArgs(testId, segment).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
+					queries[1]).WithArgs(testId, segment.Slug).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
 			}
 			mock.ExpectCommit()
 
@@ -318,21 +385,21 @@ func Test_modifyUserInDB(t *testing.T) {
 			expectedErrStr := ""
 
 			mock.ExpectBegin()
-			for _, segment := range testAppend {
+			for _, relation := range testAppend {
 				if rand.Intn(2) == 0 {
 					mock.ExpectExec(
-						queries[0]).WithArgs(testId, segment).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
+						queries[0]).WithArgs(testId, relation.Slug, relation.Expires).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
 				} else {
 					err := fmt.Errorf("duplicate key value violates unique constraint %d", rand.Int())
 					mock.ExpectExec(
-						queries[0]).WithArgs(testId, segment).WillReturnError(err)
+						queries[0]).WithArgs(testId, relation.Slug, relation.Expires).WillReturnError(err)
 
-					expectedErrStr += fmt.Sprintf(`error while adding user %d to the segment "%s": %s`, testId, segment, err.Error())
+					expectedErrStr += fmt.Sprintf(`error while adding user %d to the segment "%s": %s`, testId, relation.Slug, err.Error())
 					expectedErrStr += fmt.Sprintln()
 				}
 			}
 			for _, segment := range testRemove {
-				mock.ExpectExec(queries[1]).WithArgs(testId, segment).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
+				mock.ExpectExec(queries[1]).WithArgs(testId, segment.Slug).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
 			}
 			mock.ExpectCommit()
 
@@ -353,13 +420,13 @@ func Test_modifyUserInDB(t *testing.T) {
 
 		t.Run("error while commiting transaction", func(t *testing.T) {
 			mock.ExpectBegin()
-			for _, segment := range testAppend {
+			for _, relation := range testAppend {
 				mock.ExpectExec(
-					queries[0]).WithArgs(testId, segment).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
+					queries[0]).WithArgs(testId, relation.Slug, relation.Expires).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
 			}
 			for _, segment := range testRemove {
 				mock.ExpectExec(
-					queries[1]).WithArgs(testId, segment).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
+					queries[1]).WithArgs(testId, segment.Slug).WillReturnResult(sqlmock.NewResult(0, rand.Int63n(2)))
 			}
 			mock.ExpectCommit().WillReturnError(errors.New(testErrText))
 
@@ -397,7 +464,7 @@ func Test_GetUserRelationsInDB(t *testing.T) {
 			}
 			mock.ExpectQuery(query).WithArgs(testId).WillReturnRows(rows)
 
-			segments, err := GetUserRelationsInDB(db, testId)
+			segments, err := getUserRelationsInDB(db, testId)
 			err = checkResponce(err, nil, mock, t)
 			if err != nil {
 				t.Error(err)
@@ -411,7 +478,7 @@ func Test_GetUserRelationsInDB(t *testing.T) {
 		t.Run("error while getting user's segments from the database", func(t *testing.T) {
 			mock.ExpectQuery(query).WithArgs(testId).WillReturnError(testErr)
 
-			_, err := GetUserRelationsInDB(db, testId)
+			_, err := getUserRelationsInDB(db, testId)
 			err = checkResponce(err, fmt.Errorf("error while getting user %d's segments from the database: %s", testId, testErr), mock, t)
 			if err != nil {
 				t.Error(err)

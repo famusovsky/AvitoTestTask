@@ -225,6 +225,19 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SegmentRelation": {
+            "type": "object",
+            "properties": {
+                "expires": {
+                    "description": "Expires - время, до которого пользователь находится в сегменте.",
+                    "type": "string"
+                },
+                "slug": {
+                    "description": "Slug - название сегмента.",
+                    "type": "string"
+                }
+            }
+        },
         "models.UserModification": {
             "type": "object",
             "properties": {
@@ -232,7 +245,7 @@ const docTemplate = `{
                     "description": "Append - список сегментов, в которые необходимо добавить пользователя.",
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/models.SegmentRelation"
                     }
                 },
                 "id": {
@@ -243,7 +256,7 @@ const docTemplate = `{
                     "description": "Remove - список сегментов, из которых необходимо убрать пользователя.",
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/models.Segment"
                     }
                 }
             }
