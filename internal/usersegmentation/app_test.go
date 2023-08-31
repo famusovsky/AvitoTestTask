@@ -10,7 +10,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 	"github.com/gofiber/fiber"
 )
 
@@ -22,6 +24,8 @@ type processorMock struct {
 	errOnModifyUser       error
 	resOnGetUserRelations []string
 	errOnGetUserRelations error
+	resOnGetLogs          []models.Log
+	errOnGetLogs          error
 }
 
 func (p processorMock) AddSegment(slug string) (int, error) {
@@ -35,6 +39,9 @@ func (p processorMock) ModifyUser(id int, append []string, remove []string) erro
 }
 func (p processorMock) GetUserRelations(id int) ([]string, error) {
 	return p.resOnGetUserRelations, p.errOnGetUserRelations
+}
+func (p processorMock) GetLogs(from time.Time, to time.Time) ([]models.Log, error) {
+	return p.resOnGetLogs, p.errOnGetLogs
 }
 func (p *processorMock) CleanUp() {
 	p.resOnAddSegment = 0

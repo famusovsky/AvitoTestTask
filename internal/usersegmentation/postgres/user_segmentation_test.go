@@ -101,6 +101,13 @@ func Test_createDB(t *testing.T) {
 		CREATE TABLE IF NOT EXISTS segments (
 			id SERIAL UNIQUE,
 			slug TEXT PRIMARY KEY
+		);
+			
+		CREATE TABLE IF NOT EXISTS logs (
+			user_id INTEGER,
+			slug TEXT,
+			type TEXT,
+			created_at TIMESTAMP
 		);`
 
 		t.Run("normal case", func(t *testing.T) {
@@ -397,7 +404,7 @@ func Test_GetUserRelationsInDB(t *testing.T) {
 			}
 			mock.ExpectQuery(query).WithArgs(testId).WillReturnRows(rows)
 
-			segments, err := GetUserRelationsInDB(db, testId)
+			segments, err := getUserRelationsInDB(db, testId)
 			err = checkResponce(err, nil, mock, t)
 			if err != nil {
 				t.Error(err)
@@ -411,7 +418,7 @@ func Test_GetUserRelationsInDB(t *testing.T) {
 		t.Run("error while getting user's segments from the database", func(t *testing.T) {
 			mock.ExpectQuery(query).WithArgs(testId).WillReturnError(testErr)
 
-			_, err := GetUserRelationsInDB(db, testId)
+			_, err := getUserRelationsInDB(db, testId)
 			err = checkResponce(err, fmt.Errorf("error while getting user %d's segments from the database: %s", testId, testErr), mock, t)
 			if err != nil {
 				t.Error(err)

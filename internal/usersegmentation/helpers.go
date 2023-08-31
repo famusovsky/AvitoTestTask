@@ -47,6 +47,25 @@ func getUserMod(c *fiber.Ctx) (models.UserModification, bool, error) {
 	return mod, true, nil
 }
 
+// getLogTimestamps - получение временных рамок для логов из контекста.
+//
+// Принимает: контекст.
+//
+// Возвращает: временные рамки, флаг успешности, ошибку.
+func getLogTimestamps(c *fiber.Ctx) (models.LogTimestamps, bool, error) {
+	timestamps := models.LogTimestamps{}
+
+	dec := json.NewDecoder(bytes.NewReader(c.Body()))
+	dec.DisallowUnknownFields()
+
+	if err := dec.Decode(&timestamps); err != nil {
+		err := c.Status(http.StatusBadRequest).JSON(models.Err{Text: `request's body must implement the template {"from":"2021-01-01T00:00:00Z","to":"2021-01-01T00:00:00Z"}`})
+		return timestamps, false, err
+	}
+
+	return timestamps, true, nil
+}
+
 // checkType - проверка типа запроса на json.
 //
 // Принимает: контекст.

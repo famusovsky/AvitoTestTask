@@ -16,6 +16,52 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/logs": {
+            "get": {
+                "description": "Get a csv file with logs for the specified time period.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Logs"
+                ],
+                "summary": "Returns logs.",
+                "parameters": [
+                    {
+                        "description": "Log timestamps",
+                        "name": "timestamps",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LogTimestamps"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.Err"
+                        }
+                    }
+                }
+            }
+        },
         "/segments": {
             "post": {
                 "description": "Add segment with the specified slug to DB and get it's ID.",
@@ -213,6 +259,19 @@ const docTemplate = `{
                 "id": {
                     "description": "Value - id.",
                     "type": "integer"
+                }
+            }
+        },
+        "models.LogTimestamps": {
+            "type": "object",
+            "properties": {
+                "from": {
+                    "description": "From - начальное время.",
+                    "type": "string"
+                },
+                "to": {
+                    "description": "To - конечное время.",
+                    "type": "string"
                 }
             }
         },

@@ -36,6 +36,13 @@ CREATE TABLE segments (
 	id SERIAL UNIQUE,
 	slug TEXT PRIMARY KEY
 );
+
+CREATE TABLE IF NOT EXISTS logs (
+	user_id INTEGER,
+	slug TEXT,
+	type TEXT,
+	created_at TIMESTAMP
+);
 ```
 
 ## Комментарии к решению:
@@ -67,3 +74,12 @@ POST /segments `{"slug":"test"}` => 200 `"OK"`
 DELETE /segments `{"slug":"test"}` => 200 `"OK"`
 > Удаляет сегмент с именем test из БД.
 
+GET /logs `{"from": "2018-12-10T13:49:51Z","to": "2023-08-31T20:20:39Z"}` => 200 
+```csv
+id,segment,type,created_at
+15,string,removed,2023-08-31 17:16:17.764215 +0000 +0000
+15,string,removed,2023-08-31 17:16:17.764215 +0000 +0000
+16,string,removed,2023-08-31 17:16:27.905847 +0000 +0000
+16,amogus,removed,2023-08-31 17:16:27.905847 +0000 +0000
+```
+> Возвращает логи в формате CSV, в которых указаны сегменты, которые были добавлены или удалены в период с 2018-12-10T13:49:51Z по 2023-08-31T20:20:39Z.

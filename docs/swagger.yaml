@@ -11,6 +11,15 @@ definitions:
         description: Value - id.
         type: integer
     type: object
+  models.LogTimestamps:
+    properties:
+      from:
+        description: From - начальное время.
+        type: string
+      to:
+        description: To - конечное время.
+        type: string
+    type: object
   models.Segment:
     properties:
       slug:
@@ -39,6 +48,36 @@ info:
     Assignment 2023.
   title: User Segmentation API
 paths:
+  /logs:
+    get:
+      consumes:
+      - application/json
+      description: Get a csv file with logs for the specified time period.
+      parameters:
+      - description: Log timestamps
+        in: body
+        name: timestamps
+        required: true
+        schema:
+          $ref: '#/definitions/models.LogTimestamps'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Err'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Err'
+      summary: Returns logs.
+      tags:
+      - Logs
   /segments:
     delete:
       consumes:

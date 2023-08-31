@@ -13,7 +13,7 @@ import (
 )
 
 // XXX DO NOT FORGET ABOUT COMMENTS
-// TODO normal logging
+// TODO add tests for getLogs
 
 // @title User Segmentation API
 // @description This is a User Segmentation API server, made for Avito Backend Trainee Assignment 2023.

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
 )
@@ -68,7 +69,16 @@ func (model *UserSegmentation) ModifyUser(id int, append []string, remove []stri
 //
 // Возвращает: список сегментов, в которых состоит пользователь и ошибку.
 func (model *UserSegmentation) GetUserRelations(id int) ([]string, error) {
-	return GetUserRelationsInDB(model.db, id)
+	return getUserRelationsInDB(model.db, id)
+}
+
+// GetLogs - получение логов.
+//
+// Принимает: начальное время и конечное время.
+//
+// Возвращает: список логов и ошибку.
+func (model *UserSegmentation) GetLogs(from time.Time, to time.Time) ([]models.Log, error) {
+	return getLogsFromDB(model.db, from, to)
 }
 
 // addSegmentToDB - добавление нового сегмента в базу данных.
@@ -146,6 +156,13 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 		if err != nil {
 			errText += fmt.Sprintf(`error while adding user %d to the segment "%s": %s`, id, slug, err.Error())
 			errText += fmt.Sprintln()
+		} else {
+			// XXX
+			err = logRequest(tx, id, slug, "append")
+			if err != nil {
+				errText += fmt.Sprintf(`error while adding log for user %d to the segment "%s": %s`, id, slug, err.Error())
+				errText += fmt.Sprintln()
+			}
 		}
 	}
 
@@ -154,6 +171,13 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 		if err != nil {
 			errText += fmt.Sprintf(`error while removing user %d from the segment "%s": %s`, id, slug, err.Error())
 			errText += fmt.Sprintln()
+		} else {
+			// XXX
+			err = logRequest(tx, id, slug, "remove")
+			if err != nil {
+				errText += fmt.Sprintf(`error while adding log for user %d to the segment "%s": %s`, id, slug, err.Error())
+				errText += fmt.Sprintln()
+			}
 		}
 	}
 
@@ -168,12 +192,58 @@ func modifyUserInDB(db *sql.DB, id int, append []string, remove []string) error 
 	return nil
 }
 
+// logRequest - логирование запроса.
+//
+// Принимает: указатель на sql-транзакцию, id пользователя, имя сегмента и тип запроса.
+//
+// Возвращает: ошибку.
+func logRequest(tx *sql.Tx, id int, slug string, action string) error {
+	_, err := tx.Exec(`INSERT INTO logs (user_id, slug, type, created_at) VALUES ($1, $2, 'removed', CURRENT_TIMESTAMP);`, id, slug)
+	if err != nil {
+		return fmt.Errorf(`error while adding log for user %d to the segment "%s": %s`, id, slug, err)
+	}
+
+	return nil
+}
+
+// GetLogs - получение логов.
+//
+// Принимает: указатель на базу данных, начальное время и конечное время.
+//
+// Возвращает: список логов и ошибку.
+func getLogsFromDB(db *sql.DB, from time.Time, to time.Time) ([]models.Log, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return []models.Log{}, errors.New("error while starting transaction: " + err.Error())
+	}
+	defer tx.Rollback()
+
+	q := `SELECT user_id, slug, type, created_at FROM logs WHERE created_at > $1 AND created_at < $2;`
+	rows, err := tx.Query(q, from, to)
+	if err != nil {
+		return []models.Log{}, fmt.Errorf("error while getting logs from the database: %s", err.Error())
+	}
+	defer rows.Close()
+
+	logs := []models.Log{}
+	for rows.Next() {
+		l := models.Log{}
+		err = rows.Scan(&l.ID.Value, &l.Segment.Slug, &l.Type, &l.Timestamp)
+		if err != nil {
+			return []models.Log{}, fmt.Errorf("error while getting logs from the database: %s", err.Error())
+		}
+		logs = append(logs, l)
+	}
+
+	return logs, nil
+}
+
 // GetUserRelationsInDB - получение данных о пользователе из базы данных по id.
 //
 // Принимает: указатель на базу данных и id пользователя.
 //
 // Возвращает: список сегментов, в которых состоит пользователь и ошибку.
-func GetUserRelationsInDB(db *sql.DB, id int) ([]string, error) {
+func getUserRelationsInDB(db *sql.DB, id int) ([]string, error) {
 	q := `SELECT slug FROM segments WHERE id IN (SELECT segment_id FROM user_segment_relations WHERE user_id = $1);`
 	rows, err := db.Query(q, id)
 	if err != nil {
@@ -258,6 +328,13 @@ func createDB(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS segments (
 		id SERIAL UNIQUE,
 		slug TEXT PRIMARY KEY
+	);
+	
+	CREATE TABLE IF NOT EXISTS logs (
+		user_id INTEGER,
+		slug TEXT,
+		type TEXT,
+		created_at TIMESTAMP
 	);`
 
 	_, err := db.Exec(q)

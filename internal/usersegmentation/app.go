@@ -17,7 +17,7 @@ import (
 type App struct {
 	webApp      *fiber.App                         // webApp - веб-приложение на основе фреймворка Fiber.
 	dbProcessor models.UserSegmentationDbProcessor // dbProcessor - обработчик БД.
-	logger      *log.Logger                        // errorLog - логгер ошибок.
+	logger      *log.Logger                        // logger - логгер ошибок.
 }
 
 // CreateApp - создание приложения.
@@ -43,6 +43,7 @@ func CreateApp(logger *log.Logger, dbProcessor models.UserSegmentationDbProcesso
 	result.webApp.Delete("/segments", result.DeleteSegment)
 	result.webApp.Patch("/users", result.ModifyUser)
 	result.webApp.Get("/users/:id", result.GetUserRelations)
+	result.webApp.Get("/logs", result.GetLogs)
 
 	return result
 }

@@ -1,7 +1,9 @@
 package usersegmentation
 
 import (
+	"encoding/csv"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/famusovsky/AvitoTestTask/internal/usersegmentation/models"
@@ -71,7 +73,7 @@ func (app *App) DeleteSegment(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
 	}
 
-	return c.Status(http.StatusOK).JSON("OK")
+	return c.JSON("OK")
 }
 
 // ModifyUser - изменяет сегменты пользователя.
@@ -104,7 +106,7 @@ func (app *App) ModifyUser(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
 	}
 
-	return c.Status(http.StatusOK).JSON("OK")
+	return c.JSON("OK")
 }
 
 // GetUserRelations - возвращает сегменты, в которых состоит пользователь.
@@ -138,5 +140,52 @@ func (app *App) GetUserRelations(c *fiber.Ctx) error {
 		segments[i].Slug = slug
 	}
 
-	return c.Type("json").JSON(segments)
+	return c.JSON(segments)
+}
+
+// GetLogs - возвращает логи.
+//
+// Принимает: контекст.
+//
+// Возвращает: ошибку.
+
+// @Summary      Returns logs.
+// @Description  Get a csv file with logs for the specified time period.
+// @Tags         Logs
+// @Accept       json
+// @Produce      plain
+// @Param        timestamps body models.LogTimestamps true "Log timestamps"
+// @Success      200 {string} string "OK"
+// @Failure      400 {object} models.Err
+// @Failure      500 {object} models.Err
+// @Router       /logs [get]
+func (app *App) GetLogs(c *fiber.Ctx) error {
+	// TODO change from getting timestamps from body to getting them from query
+	if ok, err := checkType(c); !ok {
+		return err
+	}
+	timestamps, ok, err := getLogTimestamps(c)
+	if !ok {
+		return err
+	}
+
+	logs, err := app.dbProcessor.GetLogs(timestamps.From, timestamps.To)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
+	}
+
+	file, err := os.CreateTemp("", "logs_*.csv")
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(models.Err{Text: err.Error()})
+	}
+	defer file.Close()
+
+	csvWriter := csv.NewWriter(file)
+	csvWriter.Write([]string{"id", "segment", "type", "created_at"})
+	for _, log := range logs {
+		csvWriter.Write([]string{strconv.Itoa(log.ID.Value), log.Slug, log.Type, log.Timestamp.String()})
+	}
+	csvWriter.Flush()
+
+	return c.SendFile(file.Name())
 }
